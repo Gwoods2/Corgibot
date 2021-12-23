@@ -2,10 +2,12 @@ import os
 import discord
 import random
 import logging
-my_secret = os.environ['token']
+#import corgi_token
+#my_secret = os.environ['token']
 
 from discord.ext import commands
-from keep_alive import keep_alive
+#from corgi_token import token
+#from keep_alive import keep_alive
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='.', intents=intents)
@@ -159,8 +161,10 @@ async def on_raw_reaction_add(payload):
     await message.delete()
 
 
+#run token, in different file because of security
+with open(r'./files/token.txt') as f:
+    TOKEN = f.readline()
 
-
-keep_alive()
+#keep_alive()
 #this is for the token
-bot.run(my_secret)
+bot.run(TOKEN)

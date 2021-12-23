@@ -129,4 +129,4 @@ dmypy.json
 .pyre/
 
 # Corgibot Token
-os.environ
+files/token.txt
