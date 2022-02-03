@@ -69,17 +69,54 @@ async def audit(ctx):
                     async for message in channel.history(limit=200):
                         #print('message')
                         #print(message)
-                        await message.clear_reactions() #clears out all the old reactions
-                        await message.add_reaction('✅')
-                        if channel.id == 838499217697013780: #later
-                            await message.add_reaction('⏭️')
-                            #prompt to move to other channels
-                        else:
-                            await message.add_reaction('⏮️')
-                            #prompt to move back to later
+                        if message.embeds == []: #only activates these if no embed is found
+                            await message.clear_reactions() #clears out all the old reactions
+                            await message.add_reaction('✅')
+                            if channel.id == 838499217697013780: #later
+                                await message.add_reaction('⏭️')
+                                    #prompt to move to other channels
+                            else:
+                                await message.add_reaction('⏮️')
+                                #prompt to move back to later
 
         await ctx.send('Audit of shopping lists complete!')
         print('audit complete')
+
+
+#list command
+@bot.command()
+async def list(ctx):
+    #space to comment out
+    guild = bot.get_guild(838493859474440242) #our server
+    channel = bot.get_channel(938883951848722493) #grocery list
+    async for message in channel.history(limit=20): #deletes grocery list
+        await message.delete()
+
+    for cat, channels in guild.by_category():
+        if cat.id == 838499351965859850: #shopping category
+            for channel in channels:
+                print('currently listing:')
+                print(channel.name)
+                stack=[]
+                async for message in channel.history(limit=200):
+                    content = message.content
+                    stack.append(content)
+                    stack.append('\n')
+                msg = ''.join([str(i) for i in stack])
+                print(msg)
+                embed = discord.Embed(
+                    title=channel,
+                    description=msg,
+                    color=discord.Color.orange(),
+                    )
+                channel = bot.get_channel(938883951848722493) #grocery list
+                await channel.send(
+                embed = embed,
+                    )
+
+
+    await ctx.send('Here is your grocery list!')
+
 
 #add reactions to messages
 #aside from later and
@@ -90,11 +127,12 @@ async def on_message(message):
     if category == "shopping":
         #print(category)
         #print(channel)
-        await message.add_reaction('✅')
-        if channel == 'later':
-            await message.add_reaction('⏭️') #prompt to embed
-        else:
-            await message.add_reaction('⏮️') #prompt to later
+        if message.embeds == []: #only activates these if no embed is found
+            await message.add_reaction('✅')
+            if channel == 'later':
+                await message.add_reaction('⏭️') #prompt to embed
+            else:
+                await message.add_reaction('⏮️') #prompt to later
 
 
     await bot.process_commands(message)
@@ -114,7 +152,11 @@ async def on_raw_reaction_add(payload):
 
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(id)
-    content = message.content
+    if message.embeds == []: #only copy whole contents if not an embed
+        content = message.content
+    else:
+        content = embed.title
+        print(content)
 
     if payload.emoji.name == '✅': #move to purchased
         if payload.channel_id != 858879163142111272: #purchased
@@ -127,8 +169,14 @@ async def on_raw_reaction_add(payload):
             await channel.send(content)
 
     if payload.emoji.name == '⏭️': #embed to send places
-        print('make embed here')
-        print(id)
+        embed = discord.Embed(
+            title=content,
+            description='list of stores here',
+            color=discord.Color.orange(),
+        )
+        await channel.send(
+        embed = embed,
+        )
         return
 
 
@@ -139,6 +187,5 @@ async def on_raw_reaction_add(payload):
 with open(r'./files/token.txt') as f:
     TOKEN = f.readline()
 
-#keep_alive()
 #this is for the token
 bot.run(TOKEN)
