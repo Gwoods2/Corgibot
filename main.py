@@ -69,15 +69,15 @@ async def audit(ctx):
                     async for message in channel.history(limit=200):
                         #print('message')
                         #print(message)
+                        await message.clear_reactions() #clears out all the old reactions
                         await message.add_reaction('✅')
-                        await message.add_reaction('❌')
-                        if channel.id == 838499217697013780:
-                            await message.add_reaction('🇰') #kroger
-                            await message.add_reaction('🇸') #sams
-                            await message.add_reaction('🇲') #menards
-                            await message.add_reaction('🇬') #walgreens
-                            await message.add_reaction('🇼') #walmart
-                            await message.add_reaction('🇯') #jungle-jims
+                        if channel.id == 838499217697013780: #later
+                            await message.add_reaction('⏭️')
+                            #prompt to move to other channels
+                        else:
+                            await message.add_reaction('⏮️')
+                            #prompt to move back to later
+
         await ctx.send('Audit of shopping lists complete!')
         print('audit complete')
 
@@ -91,14 +91,11 @@ async def on_message(message):
         #print(category)
         #print(channel)
         await message.add_reaction('✅')
-        await message.add_reaction('❌')
-        if channel == 'later' or channel == 'bot-testing-2':
-            await message.add_reaction('🇰') #kroger
-            await message.add_reaction('🇸') #sams
-            await message.add_reaction('🇲') #menards
-            await message.add_reaction('🇬') #walgreens
-            await message.add_reaction('🇼') #walmart
-            await message.add_reaction('🇯') #jungle-jims
+        if channel == 'later':
+            await message.add_reaction('⏭️') #prompt to embed
+        else:
+            await message.add_reaction('⏮️') #prompt to later
+
 
     await bot.process_commands(message)
 
@@ -108,7 +105,7 @@ async def on_raw_reaction_add(payload):
     userid = payload.user_id
     #print(userid)
     #if user.bot:
-    if userid == 858373439781601300:
+    if userid == 858373439781601300: #won't do events if corgibot is the one reacting
         return
 
     id = int(payload.message_id)
@@ -119,43 +116,20 @@ async def on_raw_reaction_add(payload):
     message = await channel.fetch_message(id)
     content = message.content
 
-    if payload.emoji.name == '✅':
-        if payload.channel_id != 858879163142111272:
-            #print('purchased')
-            #print(id)
+    if payload.emoji.name == '✅': #move to purchased
+        if payload.channel_id != 858879163142111272: #purchased
             channel = bot.get_channel(858879163142111272)
             await channel.send(content)
 
-    if payload.emoji.name == '❌':
-        if payload.channel_id != 838499217697013780:
-            #print('later')
-            #print(id)
+    if payload.emoji.name == '⏮️': #move to later
+        if payload.channel_id != 838499217697013780: #later channel
             channel = bot.get_channel(838499217697013780)
             await channel.send(content)
 
-    if payload.emoji.name == '🇰': #kroger
-        channel = bot.get_channel(838493953183449128)
-        await channel.send(content)
-
-    if payload.emoji.name == '🇸': #sams
-        channel = bot.get_channel(839559455834112030)
-        await channel.send(content)
-
-    if payload.emoji.name == '🇲': #menards
-        channel = bot.get_channel(842194565586092062)
-        await channel.send(content)
-
-    if payload.emoji.name == '🇬': #walgreens
-        channel = bot.get_channel(851887831394942976)
-        await channel.send(content)
-
-    if payload.emoji.name == '🇼': #walmart
-        channel = bot.get_channel(858051070558076938)
-        await channel.send(content)
-
-    if payload.emoji.name == '🇯': # Jungle Jims
-        channel = bot.get_channel(858084297725575228)
-        await channel.send(content)
+    if payload.emoji.name == '⏭️': #embed to send places
+        print('make embed here')
+        print(id)
+        return
 
 
     await message.delete()
