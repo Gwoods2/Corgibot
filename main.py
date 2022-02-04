@@ -2,12 +2,14 @@ import os
 import discord
 import random
 import logging
-#import corgi_token
-#my_secret = os.environ['token']
+from utils.ids import(
+    GuildIDs,
+    CategoryIDs,
+    ChannelIDs,
+    UserIDs,
+)
 
 from discord.ext import commands
-#from corgi_token import token
-#from keep_alive import keep_alive
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='.', intents=intents)
@@ -17,7 +19,12 @@ logger.setLevel(logging.DEBUG)
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
 logger.addHandler(handler)
-
+"""
+#these are up top because i need them in both on message and on reaction
+storecount = 0
+storeincrement = 0
+stackstore = []
+"""
 @bot.event
 async def on_ready():
     await bot.change_presence(status=discord.Status.idle, activity=discord.Game('with their tail'))
@@ -59,25 +66,27 @@ async def _8ball(ctx, *, question):
 @bot.command()
 async def audit(ctx):
     async with ctx.typing():
-        guild = bot.get_guild(838493859474440242)
+        guild = bot.get_guild(GuildIDs.LG_SHOPPING)
         for cat, channels in guild.by_category():
-            if cat.id == 838499351965859850: #shopping
+            if cat.id == CategoryIDs.SHOPPING: #shopping
                 for channel in channels:
                     print('currently auditing:')
                     print(channel.name)
                     print('-----')
                     async for message in channel.history(limit=200):
-                        #print('message')
-                        #print(message)
-                        if message.embeds == []: #only activates these if no embed is found
+                        #only activates these if no embed is found
+                        if message.embeds == []:
                             await message.clear_reactions() #clears out all the old reactions
                             await message.add_reaction('✅')
-                            if channel.id == 838499217697013780: #later
+                            if channel.id == ChannelIDs.LATER: #later
                                 await message.add_reaction('⏭️')
                                     #prompt to move to other channels
                             else:
                                 await message.add_reaction('⏮️')
                                 #prompt to move back to later
+                        #cleans up embeds so i don't have to do it manually
+                        else:
+                            await message.delete()
 
         await ctx.send('Audit of shopping lists complete!')
         print('audit complete')
@@ -87,13 +96,13 @@ async def audit(ctx):
 @bot.command()
 async def list(ctx):
     #space to comment out
-    guild = bot.get_guild(838493859474440242) #our server
-    channel = bot.get_channel(938883951848722493) #grocery list
+    guild = bot.get_guild(GuildIDs.LG_SHOPPING) #our server
+    channel = bot.get_channel(ChannelIDs.GROCERY_LIST) #grocery list
     async for message in channel.history(limit=20): #deletes grocery list
         await message.delete()
 
     for cat, channels in guild.by_category():
-        if cat.id == 838499351965859850: #shopping category
+        if cat.id == CategoryIDs.SHOPPING: #shopping category
             for channel in channels:
                 print('currently listing:')
                 print(channel.name)
@@ -109,7 +118,7 @@ async def list(ctx):
                     description=msg,
                     color=discord.Color.orange(),
                     )
-                channel = bot.get_channel(938883951848722493) #grocery list
+                channel = bot.get_channel(ChannelIDs.GROCERY_LIST) #grocery list
                 await channel.send(
                 embed = embed,
                     )
@@ -118,24 +127,7 @@ async def list(ctx):
     await ctx.send('Here is your grocery list!')
 
 
-#add reactions to messages
-#aside from later and
-@bot.event
-async def on_message(message):
-    category = str(message.channel.category)
-    channel = str(message.channel)
-    if category == "shopping":
-        #print(category)
-        #print(channel)
-        if message.embeds == []: #only activates these if no embed is found
-            await message.add_reaction('✅')
-            if channel == 'later':
-                await message.add_reaction('⏭️') #prompt to embed
-            else:
-                await message.add_reaction('⏮️') #prompt to later
 
-
-    await bot.process_commands(message)
 
 #what to do when a person reacts
 @bot.event
@@ -143,7 +135,7 @@ async def on_raw_reaction_add(payload):
     userid = payload.user_id
     #print(userid)
     #if user.bot:
-    if userid == 858373439781601300: #won't do events if corgibot is the one reacting
+    if userid == UserIDs.SELF: #won't do events if corgibot is the one reacting
         return
 
     id = int(payload.message_id)
@@ -159,29 +151,155 @@ async def on_raw_reaction_add(payload):
         print(content)
 
     if payload.emoji.name == '✅': #move to purchased
-        if payload.channel_id != 858879163142111272: #purchased
-            channel = bot.get_channel(858879163142111272)
+        if payload.channel_id != ChannelIDs.PURCHASED: #purchased
+            channel = bot.get_channel(ChannelIDs.PURCHASED)
             await channel.send(content)
 
     if payload.emoji.name == '⏮️': #move to later
-        if payload.channel_id != 838499217697013780: #later channel
-            channel = bot.get_channel(838499217697013780)
+        if payload.channel_id != ChannelIDs.LATER: #later channel
+            channel = bot.get_channel(ChannelIDs.LATER)
             await channel.send(content)
 
     if payload.emoji.name == '⏭️': #embed to send places
+        stackstore = []
+        storecount = 0
+        storeincrement = 0
+        storenumber = 0
+        #stackemoji = []
+        fullstack = []
+        numberstore = ''
+        guild = bot.get_guild(GuildIDs.LG_SHOPPING)
+        for cat, channels in guild.by_category():
+            if cat.id == CategoryIDs.SHOPPING: #shopping category
+                for channel in channels:
+        #for channel in CategoryIDs.SHOPPING:
+                    if channel.id != ChannelIDs.LATER:
+                        if channel.id != ChannelIDs.PURCHASED:
+
+                            stackstore.append(channel.name)
+                            storecount = storecount + 1
+                            #print(storecount)
+                            #print(stackstore)
+        #sets up the referenced message to refer to later
+        referenced = payload.message_id
+        #print(referenced)
+        #sets up the embed
         embed = discord.Embed(
             title=content,
-            description='list of stores here',
             color=discord.Color.orange(),
-        )
-        await channel.send(
+            #fields= [
+            #{ name:name, value:value}
+            #]
+            )
+        #opens the counting digits file
+        #with open(r'./files/countingdigits.txt') as f:
+            #for line in f:
+            #    line = line.replace("\r", "").replace("\n", "")
+            #alternates adding numbers and
+        for x in stackstore:
+            storenumber=storenumber+1
+            numberstore = str(storenumber)
+            #print(numberstore)
+            embed.add_field(name="** **", value=numberstore+". "+x, inline=True)
+            #print(x)
+            #fullstack.append(f.readline())
+            #fullstack.append(x)
+            #fullstack.append('\n')
+            #fullstack.append(f.readline()+':'+x+'\n')
+            #print(fullstack)
+
+        #embed.add_field(name='name', value='value', inline=true)
+        #embed.add_field(name="** **", value=fullstack, inline=False)
+        print(fullstack)
+        await message.reply(
         embed = embed,
+        delete_after = 60
+        #message = message
         )
+        #routes reactions to the new embed
+        #message = await channel.fetch_message(channel.last_message_id)
+        #reacts to the embed with the emoji
+        #with open(r'./files/countingemoji.txt') as g:
+        """
+        for x in stackstore:
+            #reaction = g.readline()
+            print(x)
+            storeincrement=storeincrement+1
+            if storeincrement == 1:
+                await message.add_reaction('1️⃣') #try to add 1
+        """
+
         return
 
 
     await message.delete()
 
+#add reactions to messages
+@bot.event
+async def on_message(message):
+    category = str(message.channel.category)
+    channel = str(message.channel)
+    if category == "shopping":
+        #only activates these if no embed is found
+        if message.embeds == []:
+            await message.add_reaction('✅')
+            if channel == 'later':
+                await message.add_reaction('⏭️') #prompt to embed
+            else:
+                await message.add_reaction('⏮️') #prompt to later
+        #activates this with embeds
+        else:
+            print('else')
+            if channel == 'later':
+                print('later')
+                #print(stackstore)
+                stackstore = []
+                storecount = 0
+                storeincrement = 0
+                storenumber = 0
+                #stackemoji = []
+                fullstack = []
+                numberstore = ''
+                #copied from on react, because it wouldn't work without this
+                guild = bot.get_guild(GuildIDs.LG_SHOPPING)
+                for cat, channels in guild.by_category():
+                    if cat.id == CategoryIDs.SHOPPING: #shopping category
+                        for channel in channels:
+                #for channel in CategoryIDs.SHOPPING:
+                            if channel.id != ChannelIDs.LATER:
+                                if channel.id != ChannelIDs.PURCHASED:
+
+                                    stackstore.append(channel.name)
+                                    storecount = storecount + 1
+                for x in stackstore:
+                    #reaction = g.readline()
+                    print(x)
+                    #counter
+                    storeincrement=storeincrement+1
+                    print(storeincrement)
+                    #massive list of emoji
+                    if storeincrement == 1:
+                        await message.add_reaction('1️⃣')
+                    if storeincrement == 2:
+                        await message.add_reaction('2️⃣')
+                    if storeincrement == 3:
+                        await message.add_reaction('3️⃣')
+                    if storeincrement == 4:
+                        await message.add_reaction('4️⃣')
+                    if storeincrement == 5:
+                        await message.add_reaction('5️⃣')
+                    if storeincrement == 6:
+                        await message.add_reaction('6️⃣')
+                    if storeincrement == 7:
+                        await message.add_reaction('7️⃣')
+                    if storeincrement == 8:
+                        await message.add_reaction('8️⃣')
+                    if storeincrement == 9:
+                        await message.add_reaction('9️⃣')
+                    if storeincrement == 10:
+                        await message.add_reaction('0️⃣')
+
+    await bot.process_commands(message)
 
 #run token, in different file because of security
 with open(r'./files/token.txt') as f:
