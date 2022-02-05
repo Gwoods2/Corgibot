@@ -146,17 +146,17 @@ async def on_raw_reaction_add(payload):
     message = await channel.fetch_message(id)
     if message.embeds == []: #only copy whole contents if not an embed
         content = message.content
-    else:
-        content = embed.title
-        print(content)
+    #else:
+        #content = embed.title
+        #print(content)
 
     if payload.emoji.name == '✅': #move to purchased
-        if payload.channel_id != ChannelIDs.PURCHASED: #purchased
+        if payload.channel_id != ChannelIDs.PURCHASED:
             channel = bot.get_channel(ChannelIDs.PURCHASED)
             await channel.send(content)
 
     if payload.emoji.name == '⏮️': #move to later
-        if payload.channel_id != ChannelIDs.LATER: #later channel
+        if payload.channel_id != ChannelIDs.LATER:
             channel = bot.get_channel(ChannelIDs.LATER)
             await channel.send(content)
 
@@ -166,8 +166,8 @@ async def on_raw_reaction_add(payload):
         storeincrement = 0
         storenumber = 0
         #stackemoji = []
-        fullstack = []
-        numberstore = ''
+        #fullstack = []
+        #numberstore = ''
         guild = bot.get_guild(GuildIDs.LG_SHOPPING)
         for cat, channels in guild.by_category():
             if cat.id == CategoryIDs.SHOPPING: #shopping category
@@ -181,7 +181,7 @@ async def on_raw_reaction_add(payload):
                             #print(storecount)
                             #print(stackstore)
         #sets up the referenced message to refer to later
-        referenced = payload.message_id
+        referenced = payload.message_id #do  i need this?
         #print(referenced)
         #sets up the embed
         embed = discord.Embed(
@@ -210,7 +210,7 @@ async def on_raw_reaction_add(payload):
 
         #embed.add_field(name='name', value='value', inline=true)
         #embed.add_field(name="** **", value=fullstack, inline=False)
-        print(fullstack)
+        #print(fullstack)
         await message.reply(
         embed = embed,
         delete_after = 60
@@ -230,6 +230,142 @@ async def on_raw_reaction_add(payload):
         """
 
         return
+    #sets up the list of store count emoji
+    if [
+    payload.emoji.name == '1️⃣' or
+    payload.emoji.name == '2️⃣' or
+    payload.emoji.name == '3️⃣' or
+    payload.emoji.name == '4️⃣' or
+    payload.emoji.name == '5️⃣' or
+    payload.emoji.name == '6️⃣' or
+    payload.emoji.name == '7️⃣' or
+    payload.emoji.name == '8️⃣' or
+    payload.emoji.name == '9️⃣' or
+    payload.emoji.name == '0️⃣']:
+        #a bunch of checks that can be commented out
+        #print('payload emoji was a number') #tests whether the if statement worked
+        messageid = payload.message_id
+        #print('embed message id is '+str(messageid)) #check
+        embedmes = await channel.fetch_message(payload.message_id)
+        #print('embed message fetched')
+        #print('embed message is '+str(embedmes)) #check
+        #print('embed message embed is '+str(embedmes.embeds))
+        referencedmes = message.reference
+        #print('referencedmes 1: '+str(referencedmes))
+        referencedmes = await channel.fetch_message(referencedmes.message_id)
+        #print('referenced message is '+str(referencedmes)) #check
+        #print('referenced message text is '+str(referencedmes.content)) #check
+        #print(content)
+
+        #delivers message content to correct channel
+        storecount = 0
+        guild = bot.get_guild(GuildIDs.LG_SHOPPING)
+        for cat, channels in guild.by_category():
+            if cat.id == CategoryIDs.SHOPPING: #shopping category
+                for channel in channels:
+                    #skips later and purchased
+                    if channel.id != ChannelIDs.LATER:
+                        if channel.id != ChannelIDs.PURCHASED:
+                            #checks for internal mechanisms
+                            #print('channel is '+str(channel)) #check
+                            storecount = storecount + 1
+                            #print('storecount is '+str(storecount))
+
+                            #the logic for which list
+                            if payload.emoji.name == '1️⃣':
+                                if storecount == 1:
+                                    #print('sending to '+str(channel)) #check
+                                    #send to new channel
+                                    await channel.send(referencedmes.content)
+                                    #deletes embed message
+                                    #await message.delete()
+                                    #change channel back to later?
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    #print('now on #later')
+                                    #print('channel name is '+str(channel.name))
+                                    #print('channel id is '+str(channel.id))
+                                    #delete both messages
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+                            if payload.emoji.name == '2️⃣':
+                                if storecount == 2:
+                                    await channel.send(referencedmes.content)
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+                            if payload.emoji.name == '3️⃣':
+                                if storecount == 3:
+                                    await channel.send(referencedmes.content)
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+                            if payload.emoji.name == '4️⃣':
+                                if storecount == 4:
+                                    await channel.send(referencedmes.content)
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+                            if payload.emoji.name == '5️⃣':
+                                if storecount == 5:
+                                    await channel.send(referencedmes.content)
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+                            if payload.emoji.name == '6️⃣':
+                                if storecount == 6:
+                                    await channel.send(referencedmes.content)
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+                            if payload.emoji.name == '7️⃣':
+                                if storecount == 7:
+                                    await channel.send(referencedmes.content)
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+                            if payload.emoji.name == '8️⃣':
+                                if storecount == 8:
+                                    await channel.send(referencedmes.content)
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+                            if payload.emoji.name == '9️⃣':
+                                if storecount == 9:
+                                    await channel.send(referencedmes.content)
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+                            if payload.emoji.name == '0️⃣':
+                                if storecount == 10:
+                                    await channel.send(referencedmes.content)
+                                    channel = bot.get_channel(ChannelIDs.LATER)
+                                    await channel.delete_messages([
+                                    embedmes, referencedmes
+                                    ])
+                                    return
+
+
+
+
+        #return #skips deleting the embed while i test
 
 
     await message.delete()
@@ -249,17 +385,17 @@ async def on_message(message):
                 await message.add_reaction('⏮️') #prompt to later
         #activates this with embeds
         else:
-            print('else')
+            #print('else') #check
             if channel == 'later':
-                print('later')
+                #print('later') #check
                 #print(stackstore)
                 stackstore = []
                 storecount = 0
                 storeincrement = 0
-                storenumber = 0
+                #storenumber = 0
                 #stackemoji = []
-                fullstack = []
-                numberstore = ''
+                #fullstack = []
+                #numberstore = ''
                 #copied from on react, because it wouldn't work without this
                 guild = bot.get_guild(GuildIDs.LG_SHOPPING)
                 for cat, channels in guild.by_category():
@@ -273,10 +409,10 @@ async def on_message(message):
                                     storecount = storecount + 1
                 for x in stackstore:
                     #reaction = g.readline()
-                    print(x)
+                    #print(x) #check
                     #counter
                     storeincrement=storeincrement+1
-                    print(storeincrement)
+                    #print(storeincrement) #check
                     #massive list of emoji
                     if storeincrement == 1:
                         await message.add_reaction('1️⃣')
