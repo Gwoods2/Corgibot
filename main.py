@@ -144,8 +144,10 @@ async def on_raw_reaction_add(payload):
 
     channel = bot.get_channel(payload.channel_id)
     message = await channel.fetch_message(id)
+    #print(message)
     if message.embeds == []: #only copy whole contents if not an embed
         content = message.content
+        #print(content)
     #else:
         #content = embed.title
         #print(content)
@@ -154,11 +156,22 @@ async def on_raw_reaction_add(payload):
         if payload.channel_id != ChannelIDs.PURCHASED:
             channel = bot.get_channel(ChannelIDs.PURCHASED)
             await channel.send(content)
+            #workaround to delete the message, needed after adding forward
+            channel = bot.get_channel(payload.channel_id)
+            #print(channel.name)
+            message = await channel.fetch_message(payload.message_id)
+            #print(message.content)
+        await message.delete()
+        return
 
     if payload.emoji.name == '⏮️': #move to later
         if payload.channel_id != ChannelIDs.LATER:
             channel = bot.get_channel(ChannelIDs.LATER)
             await channel.send(content)
+            channel = bot.get_channel(payload.channel_id)
+            message = await channel.fetch_message(payload.message_id)
+        await message.delete()
+        return
 
     if payload.emoji.name == '⏭️': #embed to send places
         stackstore = []
@@ -367,8 +380,9 @@ async def on_raw_reaction_add(payload):
 
         #return #skips deleting the embed while i test
 
-
-    await message.delete()
+    #await channel.fetch_message(id)
+    #await message.delete()
+    #await channel.delete_messages(id)
 
 #add reactions to messages
 @bot.event
