@@ -9,3 +9,6 @@ workflow.txt
 
 # Log for that local instance
 discord.log
+
+#console login info to copy
+awslogin.txt

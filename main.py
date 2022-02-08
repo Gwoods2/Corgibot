@@ -2,17 +2,24 @@ import os
 import discord
 import random
 import logging
+import datetime
+import psutil
+import time
+import platform
 from utils.ids import(
     GuildIDs,
     CategoryIDs,
     ChannelIDs,
     UserIDs,
 )
+from utils.options import Options
+from discord.ext import commands, tasks
 
-from discord.ext import commands
 
 intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='.', intents=intents)
+allowed_mentions = discord.AllowedMentions(everyone = True)
+bot.version_number = "2.0.1"
 
 logger = logging.getLogger('discord')
 logger.setLevel(logging.DEBUG)
@@ -25,11 +32,18 @@ storecount = 0
 storeincrement = 0
 stackstore = []
 """
+#self.bot = bot
+
+
 @bot.event
 async def on_ready():
     await bot.change_presence(status=discord.Status.idle, activity=discord.Game('with their tail'))
     print('Corgibot Ready!')
-
+"""
+self.bot = bot
+bot.cleanup.start()
+print('init successful')
+"""
 @bot.command()
 async def ping(ctx):
     await ctx.send(f'Pong! {round(bot.latency * 1000)}ms')
@@ -126,8 +140,86 @@ async def list(ctx):
 
     await ctx.send('Here is your grocery list!')
 
+@bot.command()
+async def old(ctx):
+    counter = 0
+    guild = bot.get_guild(GuildIDs.LG_SHOPPING)
+    channel = bot.get_channel(ChannelIDs.PURCHASED)
+    today = datetime.date.today()
+    #print(today)
+    cutoff = datetime.timedelta(days=Options.AUTO_DELETE_AGE)
+    async for message in channel.history(limit=200): #reads messages
+        msgdate = message.created_at
+        msgdate = datetime.datetime.date(msgdate)
+        age = today-msgdate
+        if age > cutoff:
+            await message.delete()
+            counter = counter+1
+    await ctx.send(str(counter)+' old items deleted from '+channel.mention)
 
+@bot.command()
+async def daily(ctx):
+    await ctx.invoke(bot.get_command('old'))
+    await ctx.invoke(bot.get_command('audit'))
+    await ctx.invoke(bot.get_command('list'))
 
+@bot.command(aliases=["botstats"])
+async def stats(ctx):
+    """
+    Statistics and information about this bot.
+    """
+    proc = psutil.Process(os.getpid())
+    uptime_seconds = time.time() - proc.create_time()
+
+    # they return byte values but we want gigabytes
+    ram_used = round(psutil.virtual_memory()[3] / (1024 * 1024 * 1024), 2)
+    ram_total = round(psutil.virtual_memory()[0] / (1024 * 1024 * 1024), 2)
+    ram_percent = round((ram_used / ram_total) * 100, 1)
+    """maybe add macros someday
+    with open(r"./json/macros.json", "r") as f:
+        macros = json.load(f)
+        """
+    embed = discord.Embed(
+        title="Corgibot Stats",
+        color=discord.Color.orange(),
+        url="https://github.com/Gwoods2/Corgibot",
+    )
+    embed.add_field(name="Servers:", value=len(bot.guilds), inline=True)
+    embed.add_field(
+        name="Total Users:", value=len(set(bot.get_all_members())), inline=True
+    )
+    embed.add_field(
+        name="Number of Commands:",
+        value=f"{len(bot.commands)} (Events: {len(bot.extra_events)})",
+    ) #add "+ len(macros)" after commands when i have some
+
+    embed.add_field(name="Bot Version:", value=bot.version_number, inline=True)
+    embed.add_field(
+        name="Python Version:", value=platform.python_version(), inline=True
+    )
+    embed.add_field(
+        name="discord.py Version:", value=discord.__version__, inline=True
+    )
+
+    embed.add_field(
+        name="CPU Usage:",
+        value=f"{psutil.cpu_percent(interval=None)}%",
+        inline=True,
+    )
+    embed.add_field(
+        name="RAM Usage:",
+        value=f"{ram_used}GB/{ram_total}GB ({ram_percent}%)",
+        inline=True,
+    )
+    embed.add_field(
+        name="Uptime:",
+        value=str(datetime.timedelta(seconds=uptime_seconds)).split(".")[0],
+        inline=True,
+    )
+
+    embed.set_footer(text="Creator: Scrooge#0562, hosted on: AWS")
+    embed.set_thumbnail(url=bot.user.display_avatar.url)
+    await ctx.send(embed=embed)
 
 #what to do when a person reacts
 @bot.event
@@ -450,6 +542,112 @@ async def on_message(message):
                         await message.add_reaction('0️⃣')
 
     await bot.process_commands(message)
+
+cleanup_time = datetime.time(
+    Options.DAILY_CLEANUP_HOUR+Options.TIMEZONE-Options.DST,
+    Options.DAILY_CLEANUP_MINUTE,
+    0,
+    0,
+)
+
+print('cleanup time is '+str(cleanup_time))
+#print(datetime.datetime.today())
+print('utc time is '+str(datetime.datetime.utcnow()))
+#change to
+print('Ping Day is '+str(Options.PING_DAY))
+print('Today is '+str(datetime.datetime.now().weekday()))
+
+#the daily cleanup loop
+@tasks.loop(time=cleanup_time)
+async def cleanup():
+    await bot.wait_until_ready()
+    #stops it if it is past time
+    if datetime.datetime.utcnow().hour <= cleanup_time.hour:
+        print("It's cleanup time!")
+        commands_channel = bot.get_channel(ChannelIDs.BOT_COMMANDS)
+        await commands_channel.send("Now starting scheduled cleanup")
+
+        #copyable part of the old command
+        counter = 0
+        guild = bot.get_guild(GuildIDs.LG_SHOPPING)
+        print('Guild is '+str(guild))
+        channel = bot.get_channel(ChannelIDs.PURCHASED)
+        print('Channel is '+str(channel))
+        today = datetime.date.today()
+        #print(today)
+        cutoff = datetime.timedelta(days=Options.AUTO_DELETE_AGE)
+        async for message in channel.history(limit=200): #reads messages
+            msgdate = message.created_at
+            msgdate = datetime.datetime.date(msgdate)
+            age = today-msgdate
+            if age > cutoff:
+                await message.delete()
+                counter = counter+1
+        await commands_channel.send(str(counter)+' old items deleted from '+channel.mention)
+
+        #audit task
+        for cat, channels in guild.by_category():
+            if cat.id == CategoryIDs.SHOPPING: #shopping
+                for channel in channels:
+                    print('currently auditing:')
+                    print(channel.name)
+                    print('-----')
+                    async for message in channel.history(limit=200):
+                        #only activates these if no embed is found
+                        if message.embeds == []:
+                            await message.clear_reactions() #clears out all the old reactions
+                            await message.add_reaction('✅')
+                            if channel.id == ChannelIDs.LATER: #later
+                                await message.add_reaction('⏭️')
+                                    #prompt to move to other channels
+                            else:
+                                await message.add_reaction('⏮️')
+                                #prompt to move back to later
+                        #cleans up embeds so i don't have to do it manually
+                        else:
+                            await message.delete()
+
+        await commands_channel.send('Audit of shopping lists complete!')
+        print('audit complete')
+
+        #list task
+        channel = bot.get_channel(ChannelIDs.GROCERY_LIST) #grocery list
+        async for message in channel.history(limit=20): #deletes grocery list
+            await message.delete()
+
+        for cat, channels in guild.by_category():
+            if cat.id == CategoryIDs.SHOPPING: #shopping category
+                for channel in channels:
+                    print('currently listing:')
+                    print(channel.name)
+                    stack=[]
+                    async for message in channel.history(limit=200):
+                        content = message.content
+                        stack.append(content)
+                        stack.append('\n')
+                    msg = ''.join([str(i) for i in stack])
+                    print(msg)
+                    embed = discord.Embed(
+                        title=channel,
+                        description=msg,
+                        color=discord.Color.orange(),
+                        )
+                    channel = bot.get_channel(ChannelIDs.GROCERY_LIST) #grocery list
+                    await channel.send(
+                    embed = embed,
+                        )
+
+
+        await channel.send('Grocery list current as of '+str(datetime.datetime.today()))
+
+        #sends this message only on the right day
+        if datetime.datetime.now().weekday() == Options.PING_DAY:
+            list_channel = bot.get_channel(ChannelIDs.GROCERY_LIST)
+            await list_channel.send("@everyone The weekly grocery list is ready!")
+            print('ping sent')
+    #old, audit, list, ping
+
+cleanup.start()
 
 #run token, in different file because of security
 with open(r'./files/token.txt') as f:
